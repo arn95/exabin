@@ -24,6 +24,7 @@
         "string_view": "c",
         "initializer_list": "c",
         "math.h": "c",
-        "blowfish.h": "c"
+        "blowfish.h": "c",
+        "cstddef": "c"
     }
 }

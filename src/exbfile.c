@@ -113,8 +113,8 @@ EXBFileSectionMeta *exb_s_meta_init(int index, char *name, size_t size, uint8_t 
         section->s_index = index;
         section->s_name = strdup(name);
         section->s_size = size;
-        section->s_hash = (uint8_t *)malloc(16 * sizeof(uint8_t));
-        memcpy(section->s_hash, hash, 16);
+        section->s_hash = (uint8_t *)malloc(32 * sizeof(uint8_t));
+        memcpy(section->s_hash, hash, 32);
     }
 
     return section;
@@ -230,13 +230,18 @@ char *exb_s_tostr(EXBFileSectionMeta *section, size_t *size)
     if (section != NULL)
     {
 
-        /*
-            size_t s_index;
-    char *s_name;
-    size_t s_size;
-    uint8_t* s_hash;
-    */
-        char *s_hash_str = convert_ui8arrtostr(section->s_hash, 16);
+        //converting s_hash to a printable string
+        char *s_hash_str = (char *)malloc(16 * sizeof(char));
+        s_hash_str[0] = '\0';
+
+        int i;
+        for (i = 0; i < 16; i++)
+        {
+            char *ui8;
+            asprintf(&ui8, "%02x", section->s_hash[i]);
+            strcat(s_hash_str, ui8);
+        }
+
         *size = asprintf(&s_str, "%zu %s %zu %s\n", section->s_index, section->s_name, section->s_size, s_hash_str);
         if (s_hash_str != NULL)
             free(s_hash_str);
@@ -537,7 +542,7 @@ EXBFile *exb_load_header(FILE *file)
             size_t data_size = exb->exb_size - sizeof(exb->exb_type) - sizeof(exb->exb_size) - sizeof(exb->exb_enc_size);
 
             char *key = prompt_for_key();
-            
+
             if (key == NULL)
             {
                 fprintf(stderr, "Invalid key\n");
@@ -606,7 +611,7 @@ EXBFile *exb_load_data(EXBFile *exb, char *exb_data, char *key)
                          &data->bin_section_num,
                          &offset);
 
-    if (d_items == 4)
+    if (d_items == 5)
     {
 
         exb_data = exb_data + offset;
@@ -616,24 +621,17 @@ EXBFile *exb_load_data(EXBFile *exb, char *exb_data, char *key)
         EXBFileSectionMeta **sections = (EXBFileSectionMeta **)malloc(data->bin_section_num * sizeof(EXBFileSectionMeta *));
 
         size_t s_index = 0;
-        char s_name[30];
+        char s_name[50];
         size_t s_size = 0;
-        char s_hash_str[128];
+        uint8_t s_hash[33];
 
         int count = 0;
         int s_items = 0;
-        while ((s_items = sscanf(exb_data, "%zu %s %zu %s\n%n", &s_index, s_name, &s_size, s_hash_str, &offset)) == 4 && count < data->bin_section_num)
+        while ((s_items = sscanf(exb_data, "%zu %s %zu %32s\n%n", &s_index, s_name, &s_size, s_hash, &offset)) == 4 && count < data->bin_section_num)
         {
-            EXBFileSectionMeta *section = exb_s_meta_init(s_index, s_name, s_size, (uint8_t *)s_hash_str);
+            EXBFileSectionMeta *section = exb_s_meta_init(s_index, s_name, s_size, s_hash);
             sections[count++] = section;
             exb_data = exb_data + offset;
-        }
-
-        if (s_items != 2)
-        {
-            fprintf(stderr, "Malformed sections.\n");
-            exb_d_deinit(data);
-            return NULL;
         }
 
         data->bin_sections = sections;
@@ -789,12 +787,43 @@ int Base64Decode(char *b64message, unsigned char **buffer, size_t *length)
     return (0); //success
 }
 
-void exb_print(EXBFile* exb){
+void exb_print(EXBFile *exb)
+{
 
-    EXBFileData* data = exb->exb_data;
-    
+    EXBFileData *data = exb->exb_data;
+
+    //printing binary meta
+
     fprintf(stdout, "\n-------- ELF INFO --------\n");
-    fprintf(stdout, "Class: %d", data->bin_class);
-    fprintf(stdout, "Type: %s", data->bin_type);
-    fprintf(stdout, "Size: %zu", data->bin_size);
+    fprintf(stdout, "Class: %d\n", data->bin_class);
+    fprintf(stdout, "Type: %s\n", data->bin_type);
+    fprintf(stdout, "Size: %zu\n", data->bin_size);
+
+    //printing binary sections (index, name, size, MD5 hash)
+
+    int i;
+    for (i = 0; i < data->bin_section_num; i++)
+    {
+        exb_s_print(data->bin_sections[i]);
+    }
+
+    //printing shared libs the binary uses
+    fprintf(stdout, "Shared Libs: \n");
+    for (i = 0; i < data->bin_shared_libs_num; i++)
+    {
+        fprintf(stdout, "%s\n", data->bin_shared_libs[i]);
+    }
+
+    //printing shannon entropy
+
+    fprintf(stdout, "Shannon Entropy: %lf\n", data->bin_shannon_entropy);
+
+    fprintf(stdout, "-------- -------- --------\n");
+}
+
+void exb_s_print(EXBFileSectionMeta *s)
+{
+
+    fprintf(stdout, "%3s %-4.4zu %-20.15s size: %-10zu MD5: %s", " ", s->s_index, s->s_name, s->s_size, s->s_hash);
+    printf("\n");
 }

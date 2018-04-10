@@ -15,6 +15,4 @@ double calc_entropy(char*);
 char** print_dynamic_section_contents(Elf *elf, Elf_Scn *scn, GElf_Shdr *shdr, size_t*);
 EXBFileSectionMeta* print_section_meta(Elf *elf_file, Elf_Scn *section, GElf_Shdr *scn_hdr, int sh_str_i);
 
-int prompt_to_save(int*, char**);
-
 #endif

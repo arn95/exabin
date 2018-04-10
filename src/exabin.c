@@ -47,7 +47,7 @@ int parse_args(int argc, char *argv[])
 
     int s_flag = 0;
     int e_flag = 0;
-    int b_flag = 0;
+    int a_flag = 0;
     int l_flag = 0;
     int c;
     int index;
@@ -55,7 +55,7 @@ int parse_args(int argc, char *argv[])
 
     opterr = 0;
 
-    while ((c = getopt(argc, argv, "e:l:b:s")) != -1)
+    while ((c = getopt(argc, argv, "sea:l:")) != -1)
         switch (c)
         {
         case 's':
@@ -65,15 +65,16 @@ int parse_args(int argc, char *argv[])
             e_flag = 1;
             passphrase = optarg;
             break;
-        case 'b':
-            b_flag = 1;
+        case 'a':
+            a_flag = 1;
             bin_path = optarg;
             break;
         case 'l':
             l_flag = 1;
             load_path = optarg;
+            break;
         case '?':
-            if (optopt == 'e')
+            if (optopt == 'a' || optopt == 'l')
                 fprintf(stderr, "Option -%c requires an argument.\n", optopt);
             else if (isprint(optopt))
                 fprintf(stderr, "Unknown option `-%c'.\n", optopt);
@@ -86,7 +87,7 @@ int parse_args(int argc, char *argv[])
             abort();
         }
 
-    if (b_flag == 1)
+    if (a_flag == 1)
     {
 
         int open_fd;
@@ -105,21 +106,13 @@ int parse_args(int argc, char *argv[])
 
             fprintf(stdout, "\nShannon Entropy: %lf\n", ent);
 
-            // int encrypt;
-            // char *passphrase;
-            // if (prompt_to_save(&encrypt, &passphrase) != 1)
-            // {
-            //     if (encrypt == 0)
-            //     {
-            //         exb_save_enc(exb, bin_path, passphrase);
-            //     }
-            //     else
-            //     {
-            //         exb_save_plain(exb, bin_path);
-            //     }
-            // }
-
-            //exb_load("bin/access.dms.exb");
+            if (s_flag == 1){
+                if (e_flag == 1){
+                    exb_save_enc(exb, bin_path, passphrase);
+                } else {
+                    exb_save_plain(exb, bin_path);
+                }
+            }
 
             exb_deinit(exb);
         }
@@ -127,7 +120,9 @@ int parse_args(int argc, char *argv[])
     else if (l_flag == 1)
     {
         exb = exb_load(load_path);
-
+        if (exb != NULL){
+            exb_print(exb);
+        }
     }
 
     for (index = optind; index < argc; index++)
@@ -247,6 +242,8 @@ EXBFileData *print_elf_info(Elf *elf_file)
     exb_data->bin_type = type;
 
     size_t file_size = ehdr.e_shoff + (ehdr.e_shentsize * ehdr.e_shnum);
+
+    exb_data->bin_size = file_size;
 
     fprintf(stdout, "Size: %zu bytes\n", file_size);
 
@@ -478,91 +475,5 @@ EXBFileSectionMeta *print_section_meta(Elf *elf_file, Elf_Scn *section, GElf_Shd
     else
     {
         return NULL;
-    }
-}
-
-int prompt_to_save(int *encrypt, char **passphrase)
-{
-    char line[50];
-
-    fprintf(stdout, "Do you wish to save? (y/n) ");
-
-    char c;
-    if (fgets(line, sizeof(line), stdin))
-    {
-        if (1 == sscanf(line, "%c", &c))
-        {
-            if (c == 'y' || c == 'Y')
-            {
-                fprintf(stdout, "Do you wish to encrypt? (y/n) ");
-
-                if (fgets(line, sizeof(line), stdin))
-                {
-                    if (1 == sscanf(line, "%c", &c))
-                    {
-                        if (c == 'y' || c == 'Y')
-                        {
-                            fprintf(stdout, "Enter passphrase: ");
-                            if (fgets(line, sizeof(line), stdin))
-                            {
-                                char key[50];
-                                if (1 == sscanf(line, "%50s", key))
-                                {
-                                    *passphrase = strdup(key);
-                                    *encrypt = 0;
-                                }
-                                else
-                                {
-                                    *encrypt = 1;
-                                    *passphrase = NULL;
-                                }
-                            }
-                            else
-                            {
-                                *encrypt = 1;
-                                *passphrase = NULL;
-                            }
-                            return 0;
-                        }
-                        else
-                        {
-                            *encrypt = 1;
-                            *passphrase = NULL;
-                            return 0;
-                        }
-                    }
-                    else
-                    {
-                        *encrypt = 1;
-                        *passphrase = NULL;
-                        return 0;
-                    }
-                }
-                else
-                {
-                    *encrypt = 1;
-                    *passphrase = NULL;
-                    return 0;
-                }
-            }
-            else
-            {
-                *encrypt = 1;
-                *passphrase = NULL;
-                return 1;
-            }
-        }
-        else
-        {
-            *encrypt = 1;
-            *passphrase = NULL;
-            return 1;
-        }
-    }
-    else
-    {
-        *encrypt = 1;
-        *passphrase = NULL;
-        return 1;
     }
 }

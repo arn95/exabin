@@ -68,5 +68,6 @@ int Base64Encode(const unsigned char* buffer, size_t length, char** b64text);
 int Base64Decode(char* b64message, unsigned char** buffer, size_t* length);
 
 void exb_print(EXBFile*);
+void exb_s_print(EXBFileSectionMeta* s);
 
 #endif // EXBFMT_H
