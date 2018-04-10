@@ -4,10 +4,7 @@
 struct binmeta_s;
 typedef struct binmeta_s BinMeta;
 
-void printerr(char *);
-void printferr(const char *, void *);
-void printfout(const char *, void *);
-void printout(const char *);
+int parse_args(int argc, char** argv);
 void printusage(char *, char *);
 int check_deps();
 Elf *open_elf_file(char *, int *);

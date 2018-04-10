@@ -19,6 +19,7 @@ typedef struct
 {
     int bin_class;
     char *bin_type;
+    size_t bin_size;
     size_t bin_sections_size;
     int bin_section_num;
     EXBFileSectionMeta **bin_sections;
@@ -65,5 +66,7 @@ char *exb_sectionstostr(EXBFileSectionMeta **sections, int, size_t *size);
 size_t calcDecodeLength(const char* b64input);
 int Base64Encode(const unsigned char* buffer, size_t length, char** b64text);
 int Base64Decode(char* b64message, unsigned char** buffer, size_t* length);
+
+void exb_print(EXBFile*);
 
 #endif // EXBFMT_H

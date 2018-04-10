@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <openssl/blowfish.h>
+#include <stdint.h>
+#include <inttypes.h>
 #include <openssl/bio.h>
 #include <openssl/evp.h>
 #include <openssl/buffer.h>
@@ -134,18 +135,6 @@ void exb_s_meta_deinit(EXBFileSectionMeta *section)
 
 char *exb_d_tostr(EXBFileData *data, size_t *size)
 {
-
-    /*
-    int bin_class;
-    char* bin_type;
-    size_t bin_size;
-    int bin_section_num;
-    EXBFileSectionMeta **bin_sections;
-    int bin_shared_libs_num;
-    char **bin_shared_libs;
-    double bin_shannon_entropy;
-    */
-
     char *d_str = NULL;
 
     if (data != NULL)
@@ -202,9 +191,10 @@ char *exb_d_tostr(EXBFileData *data, size_t *size)
             bin_shared_libs = "NULL";
 
         d_str = NULL;
-        *size = asprintf(&d_str, "%d %s %zu %d\n%s\n%zu %d\n%s\n%lf\n",
+        *size = asprintf(&d_str, "%d %s %zu %zu %d\n%s\n%zu %d\n%s\n%lf\n",
                          data->bin_class,
                          data->bin_type,
+                         data->bin_size,
                          data->bin_sections_size,
                          data->bin_section_num,
                          bin_sections,
@@ -536,7 +526,7 @@ EXBFile *exb_load_header(FILE *file)
 
     if (!feof(file))
     {
-        h_items = fscanf(file, "EXB %d %zu %zu\n", &exb->exb_type, &exb->exb_size, &exb->exb_enc_size);
+        h_items = fscanf(file, "EXB %u %zu %zu\n", &exb->exb_type, &exb->exb_size, &exb->exb_enc_size);
     }
 
     if (h_items == 3)
@@ -608,9 +598,10 @@ EXBFile *exb_load_data(EXBFile *exb, char *exb_data, char *key)
     EXBFileData *data = exb_d_init();
     char *bin_type = (char *)malloc(30 * sizeof(char));
     int offset = 0;
-    int d_items = sscanf(exb_data, "%d %s %zu %d\n%n", //
+    int d_items = sscanf(exb_data, "%d %s %zu %zu %d\n%n",
                          &data->bin_class,
                          bin_type,
+                         &data->bin_size,
                          &data->bin_sections_size,
                          &data->bin_section_num,
                          &offset);
@@ -796,4 +787,14 @@ int Base64Decode(char *b64message, unsigned char **buffer, size_t *length)
     BIO_free_all(bio);
 
     return (0); //success
+}
+
+void exb_print(EXBFile* exb){
+
+    EXBFileData* data = exb->exb_data;
+    
+    fprintf(stdout, "\n-------- ELF INFO --------\n");
+    fprintf(stdout, "Class: %d", data->bin_class);
+    fprintf(stdout, "Type: %s", data->bin_type);
+    fprintf(stdout, "Size: %zu", data->bin_size);
 }

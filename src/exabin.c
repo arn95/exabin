@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <libelf.h>
 #include <gelf.h>
+#include <ctype.h>
 #include <dlfcn.h>
 #include <openssl/md5.h>
 #include <math.h>
@@ -27,16 +28,71 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    if (argc > 1)
-    { // it already includes exabin so 1
+    parse_args(argc, argv);
 
-        char *bin_path = argv[1];
+    // if (argc > 1)
+    // { // it already includes exabin so 1
+
+    //     char *bin_path = argv[1];
+
+    // }
+    // else
+    // {
+    //     printusage(argv[0], "Path to ELF binary not specified.");
+    // }
+}
+
+int parse_args(int argc, char *argv[])
+{
+
+    int s_flag = 0;
+    int e_flag = 0;
+    int b_flag = 0;
+    int l_flag = 0;
+    int c;
+    int index;
+    char *passphrase, *bin_path, *load_path;
+
+    opterr = 0;
+
+    while ((c = getopt(argc, argv, "e:l:b:s")) != -1)
+        switch (c)
+        {
+        case 's':
+            s_flag = 1;
+            break;
+        case 'e':
+            e_flag = 1;
+            passphrase = optarg;
+            break;
+        case 'b':
+            b_flag = 1;
+            bin_path = optarg;
+            break;
+        case 'l':
+            l_flag = 1;
+            load_path = optarg;
+        case '?':
+            if (optopt == 'e')
+                fprintf(stderr, "Option -%c requires an argument.\n", optopt);
+            else if (isprint(optopt))
+                fprintf(stderr, "Unknown option `-%c'.\n", optopt);
+            else
+                fprintf(stderr,
+                        "Unknown option character `\\x%x'.\n",
+                        optopt);
+            return 1;
+        default:
+            abort();
+        }
+
+    if (b_flag == 1)
+    {
 
         int open_fd;
         Elf *e = open_elf_file(bin_path, &open_fd);
         if (e != NULL)
         {
-
             exb = exb_init();
 
             EXBFileData *exb_data = print_elf_info(e);
@@ -62,36 +118,21 @@ int main(int argc, char *argv[])
             //         exb_save_plain(exb, bin_path);
             //     }
             // }
-            
+
             //exb_load("bin/access.dms.exb");
 
             exb_deinit(exb);
         }
     }
-    else
+    else if (l_flag == 1)
     {
-        printusage(argv[0], "Path to ELF binary not specified.");
+        exb = exb_load(load_path);
+
     }
-}
 
-void printerr(char *content)
-{
-    fprintf(stderr, "%s\n", content);
-}
-
-void printferr(const char *format, void *content)
-{
-    fprintf(stderr, format, content);
-}
-
-void printfout(const char *fmt, void *msg)
-{
-    fprintf(stdout, fmt, msg);
-}
-
-void printout(const char *content)
-{
-    fprintf(stdout, "%s\n", content);
+    for (index = optind; index < argc; index++)
+        printf("Non-option argument %s\n", argv[index]);
+    return 0;
 }
 
 void printusage(char *name, char *message)
@@ -103,7 +144,7 @@ int check_deps()
 {
     if (elf_version(EV_CURRENT) == EV_NONE)
     {
-        printferr("%s\n", "libelf not found.");
+        perror("libelf not found.\n");
         return EXIT_FAILURE;
     }
 
@@ -117,7 +158,7 @@ Elf *open_elf_file(char *path, int *fde)
 
     if (!fd)
     {
-        printferr("%s cannot be opened.\n", path);
+        fprintf(stderr, "%s cannot be opened.\n", path);
         return NULL;
     }
 
@@ -125,14 +166,14 @@ Elf *open_elf_file(char *path, int *fde)
 
     if (!elf_file)
     {
-        printerr("ELF file could not be opened.");
+        perror("ELF file could not be opened.\n");
         close(fd);
         return NULL;
     }
 
     if (elf_kind(elf_file) != ELF_K_ELF)
     {
-        printferr("%s is not an ELF file.\n", path);
+        fprintf(stderr, "%s is not an ELF file.\n", path);
         close(fd);
         return NULL;
     }
@@ -159,7 +200,7 @@ EXBFileData *print_elf_info(Elf *elf_file)
 
     if (gelf_getehdr(elf_file, &ehdr) == NULL)
     {
-        printerr("Cannot read ELF header.");
+        perror("Cannot read ELF header.");
         return exb_data;
     }
 
@@ -215,7 +256,7 @@ EXBFileData *print_elf_info(Elf *elf_file)
     Elf_Scn *section = NULL;
     if (elf_getshdrstrndx(elf_file, &sh_str_i) != 0)
     {
-        printerr("Cannot read section header string index.");
+        perror("Cannot read section header string index.\n");
         return exb_data;
     }
 
@@ -255,7 +296,7 @@ EXBFileData *print_elf_info(Elf *elf_file)
         }
         else
         {
-            printerr("gelf_getshdr failed.");
+            perror("gelf_getshdr failed.\n");
         }
     }
 
@@ -312,7 +353,7 @@ double calc_entropy(char *path)
     }
     else
     {
-        printferr("Failed to open: %s", path);
+        fprintf(stderr, "Failed to open: %s", path);
         return -1;
     }
 
@@ -395,7 +436,7 @@ EXBFileSectionMeta *print_section_meta(Elf *elf_file, Elf_Scn *section, GElf_Shd
         s_index = elf_ndxscn(section);
         s_size = scn_hdr->sh_size;
 
-        fprintf(stdout, "%3s %-4.4lu %-20.15s size: %-10lu %5s ", " ", s_index, s_name, s_size, "MD5: ");
+        fprintf(stdout, "%3s %-4.4zu %-20.15s size: %-10zu %5s ", " ", s_index, s_name, s_size, "MD5: ");
 
         MD5_CTX CTX;
         int count = 0;
@@ -465,10 +506,13 @@ int prompt_to_save(int *encrypt, char **passphrase)
                             if (fgets(line, sizeof(line), stdin))
                             {
                                 char key[50];
-                                if (1 == sscanf(line, "%50s", key)){
+                                if (1 == sscanf(line, "%50s", key))
+                                {
                                     *passphrase = strdup(key);
                                     *encrypt = 0;
-                                } else {
+                                }
+                                else
+                                {
                                     *encrypt = 1;
                                     *passphrase = NULL;
                                 }
