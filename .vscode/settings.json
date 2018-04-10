@@ -1,0 +1,28 @@
+{
+    "files.associations": {
+        "*.js": "javascriptreact",
+        "fcntl.h": "c",
+        "stdio.h": "c",
+        "unistd.h": "c",
+        "__functional_base": "c",
+        "algorithm": "c",
+        "atomic": "c",
+        "functional": "c",
+        "iterator": "c",
+        "limits": "c",
+        "memory": "c",
+        "tuple": "c",
+        "type_traits": "c",
+        "__tree": "c",
+        "map": "c",
+        "string.h": "c",
+        "stdlib.h": "c",
+        "__functional_base_03": "c",
+        "__tuple": "c",
+        "utility": "c",
+        "string": "c",
+        "string_view": "c",
+        "initializer_list": "c",
+        "math.h": "c"
+    }
+}
